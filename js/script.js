@@ -18,12 +18,28 @@ var selectableObjects = [];
 // stats
 var stats;
 
+//my stuff
+var particle;
+var token;
+
 // begin the scene
 init();
 animate();
 
 
 function init() {
+	particle = new Particle();
+
+	particle.login({username: user, password: pass}).then(
+	  	function(data){
+	    	console.log('API call completed on promise resolve: ', data.body.access_token);
+	    	token = data.body.access_token;
+	   },
+	  	function(err) {
+	    	console.log('API call completed on promise fail: ', err);
+	   }
+	);
+	
 
 	// SCENE ==========
 	renderer = new THREE.WebGLRenderer(); // sets up the renderer for the browser
@@ -95,12 +111,17 @@ function init() {
 	var ambientLight = new THREE.AmbientLight(0xeeeeee); // create new ambient light
 	scene.add(ambientLight); // add the light to the scene
 
+	hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+				hemiLight.color.setHSL( 0.6, 1, 0.6 );
+				hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+				hemiLight.position.set( 0, 500, 0 );
+				scene.add( hemiLight );
 
 	// OBJECTS ==========
 	worldSphere = new THREE.Mesh( // create new background sphere
 		new THREE.SphereGeometry(450, 32, 32), // size it
 		new THREE.MeshBasicMaterial({ // skin it
-			map: THREE.ImageUtils.loadTexture('3D/textures/background.jpg'),
+			map: THREE.ImageUtils.loadTexture('3D/textures/lake_at_dusk.jpg'),
 			side: THREE.DoubleSide
 		})
 	);
@@ -118,7 +139,7 @@ function init() {
 	camera.add(cursor);
 	cursor.position.set(0, 0, -3);
 
-	makeCubeGrid(50, 50, 0xff00ff); // make a demo grid of cubes
+	//makeCubeGrid(50, 50, 0xff00ff); // make a demo grid of cubes
 
 	loadAssets(); // load all other 3D assets
 
@@ -137,9 +158,9 @@ function loadAssets() {
 
 	var objMtlLoader = new THREE.OBJMTLLoader(); // create the OBJ loader
 
-
+	
 	// UNSELECTABLE OBJs ==========
-	var filenames = ["building"] // a list of all the filenames to load as unselectable OBJs
+	var filenames = [/*"building"*/] // a list of all the filenames to load as unselectable OBJs
 	for (var i = 0; i < filenames.length; i++) {
 		objMtlLoader.load("3D/" + filenames[i] + ".obj", "3D/" + filenames[i] + ".mtl", function(object, url) { // load the OBJ and companion MTL
 			scene.add(object); // add it to the scene
@@ -149,6 +170,7 @@ function loadAssets() {
 			object.name = filename // add a property to the new object that is its filename
 		});
 	}
+	
 
 	// SELECTABLE OBJs ==========
 	var filenames = ["stool"] // a list of all the filenames to load as selectable OBJs
@@ -161,9 +183,32 @@ function loadAssets() {
 
 			var filename = (url.split('.')[0]).split('/')[1]
 			object.name = filename // add a property to the new object that is its filename
+			//rotateObject(object, {x: 0, y: 0, z:1}, 2, 3000);
 		});
 	}
-
+/*
+	var manager = new THREE.LoadingManager();
+				manager.onProgress = function( item, loaded, total ) {
+					console.log( item, loaded, total );
+				};
+	var loader = new THREE.FBXLoader(manager);
+	loader.load( '3D/Tree_10.fbx', function( object ) {
+					object.traverse( function( child ) {
+						if ( child instanceof THREE.Mesh ) {
+							// pass
+						}
+						if ( child instanceof THREE.SkinnedMesh ) {
+							if ( child.geometry.animations !== undefined || child.geometry.morphAnimations !== undefined ) {
+								child.mixer = new THREE.AnimationMixer( child );
+								mixers.push( child.mixer );
+								var action = child.mixer.clipAction( child.geometry.animations[ 0 ] );
+								action.play();
+							}
+						}
+					} );
+					scene.add( object );
+				}, onProgress, onError );
+*/
 }
 
 
@@ -260,6 +305,17 @@ function picker() {
 
 	if (intersects.length > 0) {
 		if (intersected != intersects[0].object) {
+			console.log("obj selected");
+			var fnPr = particle.callFunction({ deviceId: '3f0021000e47343233323032', name: 'light', argument: 'hi', auth: token });
+
+			fnPr.then(
+			  	function(data) {
+			    	console.log('Function called succesfully:', data);
+			  	}, function(err) {
+			    	console.log('An error occurred:', err);
+			 });
+			
+
 			if (intersected) {
 				intersected.material.emissive.setHex(intersected.currentHex);
 			}
@@ -282,6 +338,7 @@ function picker() {
 
 function animate() {
 	requestAnimationFrame(animate);
+
 	TWEEN.update();
 
 	THREE.AnimationHandler.update(clock.getDelta());
